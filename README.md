@@ -1,11 +1,14 @@
 # FuncProfiler
-![Python Version](https://img.shields.io/badge/python-3.12-blue.svg)
+![Python Version](https://img.shields.io/badge/python-3.13-blue.svg)
 [![Code Size](https://img.shields.io/github/languages/code-size/infinitode/funcprofiler)](https://github.com/infinitode/funcprofiler)
 ![Downloads](https://pepy.tech/badge/funcprofiler)
 ![License Compliance](https://img.shields.io/badge/license-compliance-brightgreen.svg)
 ![PyPI Version](https://img.shields.io/pypi/v/funcprofiler)
 
 An open-source Python library for identifying bottlenecks in code. It includes function profiling, data exports, logging, and line-by-line profiling for more granular control.
+
+## Changelog (v.1.0.2):
+- Added support for 2 new export formats: `xml` and `md` in both function profiling, and line-by-line profiling.
 
 ## Installation
 
@@ -33,7 +36,7 @@ Please ensure that you have one of these Python versions installed. FuncProfiler
 - **Function Profiling**: Monitor a function's memory usage and execution time to identify performance issues.
 - **Line-by-Line Profiling**: Return execution time and memory usage for each line of any given function.
 - **Shared Logging**: Log outputs of functions triggered by the line-by-line and function profilers, storing results in a `.txt` file.
-- **File Exports**: Export profiling data from functions in `csv`, `json`, or `html` formats.
+- **File Exports**: Export profiling data from functions in `csv`, `json`, `html`, `xml` and `md` formats, for both line-by-line profiling and function profiling.
 > [!NOTE]
 > View more export types in the [official documentation](https://infinitode-docs.gitbook.io/documentation/package-documentation/funcprofiler-package-documentation).
 

@@ -11,7 +11,7 @@ setup(
     description='An open-source Python library for finding bottlenecks in code. Includes function profiling, data exports, logging, and even line-by-line profiling, for more control.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/infinitode/valx',
+    url='https://github.com/infinitode/funcprofiler',
     packages=find_packages(),
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -24,6 +24,7 @@ setup(
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
     ],
     python_requires='>=3.6',
 )

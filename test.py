@@ -6,7 +6,7 @@ from funcprofiler import (
 )
 
 # Sample complex functions to be profiled
-@line_by_line_profile(export_format="json", shared_log=False)
+@line_by_line_profile(export_format="md", shared_log=False)
 def complex_calculations(n):
     """A complex calculation involving nested loops."""
     total = 0
@@ -39,7 +39,7 @@ def function_calls(n):
         total += helper(i)
     return total
 
-@line_by_line_profile(export_format="csv", filename="test01")
+@line_by_line_profile(export_format="md", filename="test01")
 def simulated_io_operations(n):
     """Simulates I/O operations by sleeping and calculating a sum."""
     total = 0

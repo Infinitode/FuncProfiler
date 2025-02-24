@@ -7,13 +7,14 @@ import sys
 import csv
 import json
 from typing import Callable, List, Dict, Optional
+import xml.etree.ElementTree as ET
 
 __all__ = ['function_profile', 'line_by_line_profile', 'export_function_profile_data', 'export_profiling_data']
 
 def function_profile(export_format: Optional[str] = None, filename: Optional[str] = None, shared_log: bool = False) -> Callable:
     """Decorator factory to profile the execution time and memory usage of a function.
 
-    Args:
+    Parameters:
         export_format (Optional[str]): The format to export the profiling data ('txt', 'json', 'csv', 'html').
         filename (Optional[str]): The name of the output file (without extension).
         shared_log (Optional[bool]): If True, log to a shared file for all profiled functions.
@@ -78,10 +79,10 @@ def function_profile(export_format: Optional[str] = None, filename: Optional[str
 def export_function_profile_data(profiling_data: dict, func: Callable, export_format: str, filename: str) -> None:
     """Export profiling data for the function profile to the specified format.
 
-    Args:
+    Parameters:
         profiling_data (dict): The profiling data containing execution time and memory usage.
         func (Callable): The function that was profiled.
-        export_format (str): The format for export ('txt', 'json', 'csv', 'html').
+        export_format (str): The format for export ('txt', 'json', 'csv', 'html', 'xml', 'md').
         filename (str): The output filename without extension.
     """
     execution_time = profiling_data["execution_times"]
@@ -115,8 +116,22 @@ def export_function_profile_data(profiling_data: dict, func: Callable, export_fo
             f.write(f"<p>Memory Usage: <strong>{memory_usage:.6f}MB</strong></p>")
             f.write("</body></html>")
 
+    elif export_format == "xml":
+        root = ET.Element("FunctionProfile")
+        ET.SubElement(root, "Function").text = func.__name__
+        ET.SubElement(root, "ExecutionTime").text = f"{execution_time:.12f}"
+        ET.SubElement(root, "MemoryUsage").text = f"{memory_usage:.6f}"
+        tree = ET.ElementTree(root)
+        tree.write(f"{filename}.xml")
+
+    elif export_format == "md":
+        with open(f"{filename}.md", 'w') as f:
+            f.write(f"# Function Profiling Report for {func.__name__}\n\n")
+            f.write(f"**Execution Time:** {execution_time:.12f}s\n\n")
+            f.write(f"**Memory Usage:** {memory_usage:.6f}MB\n")
+
     else:
-        raise ValueError("Unsupported export format. Use 'txt', 'json', 'csv', or 'html'.")
+        raise ValueError("Unsupported export format. Use 'txt', 'json', 'csv', 'html', 'xml', or 'md'.")
 
 def line_by_line_profile(
     export_format: Optional[str] = None,
@@ -125,7 +140,7 @@ def line_by_line_profile(
 ) -> Callable:
     """Decorator for line-by-line profiling of a function with optional data export and shared logging.
 
-    Args:
+    Parameters:
         export_format (Optional[str]): The format to export the profiling data ('json', 'csv', 'html').
         filename (Optional[str]): The name of the output file (without extension).
         shared_log (Optional[bool]): If True, log to a shared file for all profiled functions.
@@ -227,12 +242,12 @@ def export_profiling_data(
     export_format: str,
     filename: str
 ) -> None:
-    """Export the profiling data to the specified format (JSON, CSV, HTML).
+    """Export the profiling data to the specified format (JSON, CSV, HTML, XML, MD).
 
-    Args:
+    Parameters:
         profiling_data (Dict[str, Dict[int, float]]): Profiling data to be exported.
         func (Callable): The function that was profiled.
-        export_format (str): The format for export ('json', 'csv', 'html').
+        export_format (str): The format for export ('json', 'csv', 'html', 'xml', 'md').
         filename (str): The output filename without extension.
     """
     line_execution_times = profiling_data["line_execution_times"]
@@ -331,6 +346,29 @@ def export_profiling_data(
         with open(output_path, mode='a') as f:
             f.write(html_content)
         print(f"[PROFILER] HTML report generated at: {output_path}")
+
+    elif export_format == 'xml':
+        root = ET.Element("FunctionProfile")
+        for data in export_data:
+            line_element = ET.SubElement(root, "Line")
+            ET.SubElement(line_element, "FunctionName").text = data['Function Name']
+            ET.SubElement(line_element, "LineNumber").text = data['Line Number']
+            ET.SubElement(line_element, "SourceCode").text = data['Source Code']
+            ET.SubElement(line_element, "ExecutionTime").text = data['Execution Time (s)']
+            ET.SubElement(line_element, "MemoryUsage").text = data['Memory Usage (MB)']
+        tree = ET.ElementTree(root)
+        tree.write(f"{filename}.xml")
+        print(f"[PROFILER] XML report generated at: {filename}.xml")
+
+    elif export_format == 'md':
+        output_path = f"{filename}.md"
+        with open(output_path, 'w') as f:
+            f.write(f"# Line-by-Line Profiling Report for {func.__name__}\n\n")
+            f.write("| Line Number | Source Code | Execution Time (s) | Memory Usage (MB) |\n")
+            f.write("|-------------|-------------|--------------------|-------------------|\n")
+            for data in export_data:
+                f.write(f"| {data['Line Number']} | {data['Source Code']} | {data['Execution Time (s)']} | {data['Memory Usage (MB)']} |\n")
+        print(f"[PROFILER] Markdown report generated at: {output_path}")
 
     else:
         print(f"[PROFILER] Unsupported export format: {export_format}")
