@@ -1,5 +1,7 @@
-__pycache__
-*.pyc
-dist/
-build/
-venv/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Log files
+*.txt
