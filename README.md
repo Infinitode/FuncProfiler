@@ -7,8 +7,11 @@
 
 An open-source Python library for identifying bottlenecks in code. It includes function profiling, data exports, logging, and line-by-line profiling for more granular control.
 
-## Changelog (v.1.0.2):
-- Added support for 2 new export formats: `xml` and `md` in both function profiling, and line-by-line profiling.
+## Changelog (v.1.1.0):
+- Added support for 2 new export formats: `yaml` and `toml`.
+- Exports now include more information: peak memory usage, timestamp, arguments, return value, filepath, line number, and docstring.
+- Added `enabled` and `log_level` options to the decorators.
+- Improved export formats for better readability.
 
 ## Installation
 
@@ -20,25 +23,30 @@ pip install funcprofiler
 
 ## Supported Python Versions
 
-FuncProfiler supports the following Python versions:
-
-- Python 3.6
-- Python 3.7
-- Python 3.8
-- Python 3.9
-- Python 3.10
-- Python 3.11 and later (preferred)
-
-Please ensure that you have one of these Python versions installed. FuncProfiler may not function as expected on earlier versions.
+FuncProfiler supports Python 3.6 and later.
 
 ## Features
 
-- **Function Profiling**: Monitor a function's memory usage and execution time to identify performance issues.
-- **Line-by-Line Profiling**: Return execution time and memory usage for each line of any given function.
-- **Shared Logging**: Log outputs of functions triggered by the line-by-line and function profilers, storing results in a `.txt` file.
-- **File Exports**: Export profiling data from functions in `csv`, `json`, `html`, `xml` and `md` formats, for both line-by-line profiling and function profiling.
-> [!NOTE]
-> View more export types in the [official documentation](https://infinitode-docs.gitbook.io/documentation/package-documentation/funcprofiler-package-documentation).
+- **Function Profiling**: Monitor a function's memory usage and execution time.
+- **Line-by-Line Profiling**: Get execution time and memory usage for each line of a function.
+- **Shared Logging**: Log profiler outputs to a `.txt` file.
+- **File Exports**: Export profiling data in various formats.
+- **New Options**:
+    - `enabled`: A boolean to enable or disable profiling.
+    - `log_level`: Set the logging level to "info" or "debug".
+
+## Export Formats
+
+| Format | `function_profile` | `line_by_line_profile` |
+|--------|--------------------|------------------------|
+| `txt`  |         ✅         |           ❌           |
+| `json` |         ✅         |           ✅           |
+| `csv`  |         ✅         |           ✅           |
+| `html` |         ✅         |           ✅           |
+| `xml`  |         ✅         |           ✅           |
+| `md`   |         ✅         |           ✅           |
+| `yaml` |         ✅         |           ✅           |
+| `toml` |         ✅         |           ✅           |
 
 ## Usage
 
@@ -47,12 +55,10 @@ Please ensure that you have one of these Python versions installed. FuncProfiler
 ```python
 from funcprofiler import function_profile
 
-# Exporting as `html` with logging enabled
-@function_profile(export_format="html", shared_log=True)
+@function_profile(export_format="html", shared_log=True, log_level="debug")
 def some_function():
     return "Hello World."
 
-# Call the function
 message = some_function()
 ```
 
@@ -61,28 +67,21 @@ message = some_function()
 ```python
 from funcprofiler import line_by_line_profile
 
-# Logging enabled without exports
-@line_by_line_profile(shared_log=True)
+@line_by_line_profile(shared_log=True, enabled=True)
 def some_complicated_function(n):
     total = 0
     for i in range(n):
         for j in range(i):
-            total += (i * j) ** 0.5  # Square root calculation
+            total += (i * j) ** 0.5
     return total
 
-# Call the function
 total = some_complicated_function(1000)
 ```
 
-> [!NOTE]
-> FuncProfiler can be added to any function using the callable format: `@funcprofiler_function_name(expected_arguments)`.
-
 ## Contributing
 
-Contributions are welcome! If you encounter issues, have suggestions, or wish to contribute to FuncProfiler, please open an issue or submit a pull request on [GitHub](https://github.com/infinitode/funcprofiler).
+Contributions are welcome! Please open an issue or submit a pull request on [GitHub](https://github.com/infinitode/funcprofiler).
 
 ## License
 
-FuncProfiler is released under the terms of the **MIT License (Modified)**. Please see the [LICENSE](https://github.com/infinitode/funcprofiler/blob/main/LICENSE) file for the full text.
-
-**Modified License Clause**: The modified license clause allows users to create derivative works based on the FuncProfiler software. However, it requires that any substantial changes to the software be clearly distinguished from the original work and distributed under a different name.
+FuncProfiler is released under the **MIT License (Modified)**. See the [LICENSE](https://github.com/infinitode/funcprofiler/blob/main/LICENSE) file for details.
