@@ -26,6 +26,18 @@ def function_profile(export_format: Optional[str] = None, filename: Optional[str
     log_filename = f"func_profiler_logs_{time.strftime('%Y%m%d')}_{time.strftime('%H%M%S')}.txt"
 
     def decorator(func: Callable) -> Callable:
+        # Pre-fetch metadata
+        func_name = func.__name__
+        try:
+            filepath = inspect.getfile(func)
+        except (TypeError, ValueError):
+            filepath = "unknown"
+        try:
+            line_number = inspect.getsourcelines(func)[1]
+        except (IOError, TypeError):
+            line_number = 0
+        docstring = func.__doc__
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             if not enabled:
@@ -34,14 +46,6 @@ def function_profile(export_format: Optional[str] = None, filename: Optional[str
             # Start time and memory tracking
             tracemalloc.start()
             start_time = time.time()
-
-            # Prepare shared logging if enabled
-            log_file = None
-            if shared_log:
-                log_file = open(log_filename, 'a')
-                log_file.write(f"Profiling log for {func.__name__}\n")
-                log_file.write(f"Date: {time.strftime('%Y-%m-%d')}\n")
-                log_file.write(f"Time: {time.strftime('%H:%M:%S')}\n\n")
 
             # Execute the function
             result = func(*args, **kwargs)
@@ -52,41 +56,51 @@ def function_profile(export_format: Optional[str] = None, filename: Optional[str
             tracemalloc.stop()
 
             # Prepare data for exporting
-            profiling_data = {
-                "function_name": func.__name__,
-                "execution_times": end_time - start_time,
-                "memory_usage": current / 10**6,  # Convert to MB
-                "peak_memory_usage": peak / 10**6,
-                "timestamp": time.strftime('%Y-%m-%d %H:%M:%S'),
-                "arguments": str({'args': args, 'kwargs': kwargs}),
-                "return_value": str(result),
-                "filepath": inspect.getfile(func),
-                "line_number": inspect.getsourcelines(func)[1],
-                "docstring": func.__doc__
-            }
+            execution_time = end_time - start_time
+            current_mb = current / 10**6
+            peak_mb = peak / 10**6
 
-            if export_format:
-                file = filename or f"{func.__name__}_funcprofile_report"
-                export_function_profile_data(profiling_data, func, export_format, file)
+            if export_format or log_level == "debug" or shared_log:
+                now = time.localtime()
+                timestamp = time.strftime('%Y-%m-%d %H:%M:%S', now)
+
+                # Prepare shared logging if enabled
+                if shared_log:
+                    with open(log_filename, 'a') as log_file:
+                        date_str = timestamp[:10]
+                        time_str = timestamp[11:]
+                        log_file.write(f"Profiling log for {func_name}\n")
+                        log_file.write(f"Date: {date_str}\n")
+                        log_file.write(f"Time: {time_str}\n\n")
+                        log_file.write(f"Function {func_name} called with args: {args}, kwargs: {kwargs}\n")
+                        log_file.write(f"Execution Time: {execution_time:.12f}s, Memory usage: {current_mb:.6f}MB; Peak: {peak_mb:.6f}MB\n")
+                        log_file.write("-" * 40 + "\n")
+
+                if export_format:
+                    profiling_data = {
+                        "function_name": func_name,
+                        "execution_times": execution_time,
+                        "memory_usage": current_mb,
+                        "peak_memory_usage": peak_mb,
+                        "timestamp": timestamp,
+                        "arguments": str({'args': args, 'kwargs': kwargs}),
+                        "return_value": str(result),
+                        "filepath": filepath,
+                        "line_number": line_number,
+                        "docstring": docstring
+                    }
+                    file = filename or f"{func_name}_funcprofile_report"
+                    export_function_profile_data(profiling_data, func, export_format, file)
 
             # Display the profiling results
             if log_level == "info":
-                print(f"[FUNCPROFILER] Function '{func.__name__}' executed in {end_time - start_time:.12f}s")
-                print(f"[FUNCPROFILER] Current memory usage: {current / 10**6:.12f}MB; Peak: {peak / 10**6:.12f}MB")
+                print(f"[FUNCPROFILER] Function '{func_name}' executed in {execution_time:.12f}s")
+                print(f"[FUNCPROFILER] Current memory usage: {current_mb:.12f}MB; Peak: {peak_mb:.12f}MB")
             elif log_level == "debug":
-                print(f"[FUNCPROFILER-DEBUG] Function '{func.__name__}' called with args: {args}, kwargs: {kwargs}")
-                print(f"[FUNCPROFILER-DEBUG] Execution Time: {end_time - start_time:.12f}s")
-                print(f"[FUNCPROFILER-DEBUG] Memory Usage: {current / 10**6:.6f}MB; Peak: {peak / 10**6:.6f}MB")
+                print(f"[FUNCPROFILER-DEBUG] Function '{func_name}' called with args: {args}, kwargs: {kwargs}")
+                print(f"[FUNCPROFILER-DEBUG] Execution Time: {execution_time:.12f}s")
+                print(f"[FUNCPROFILER-DEBUG] Memory Usage: {current_mb:.6f}MB; Peak: {peak_mb:.6f}MB")
                 print(f"[FUNCPROFILER-DEBUG] Return Value: {result}")
-
-            # Log the profiling data
-            if shared_log and log_file:
-                log_file.write(f"Function {func.__name__} called with args: {args}, kwargs: {kwargs}\n")
-                log_file.write(f"Execution Time: {end_time - start_time:.12f}s, Memory usage: {current / 10**6:.6f}MB; Peak: {peak / 10**6:.6f}MB\n")
-                log_file.write("-" * 40 + "\n")  # Separator between calls
-
-            if shared_log and log_file:
-                log_file.close()  # Close the log file after writing if shared_log is True
 
             return result
 
@@ -126,24 +140,24 @@ def export_function_profile_data(profiling_data: dict, func: Callable, export_fo
             writer.writerow(profiling_data.values())
 
     elif export_format == "html":
+        html_lines = [
+            "<html><head><title>Function Profiling Report</title>",
+            "<style>",
+            "    body { font-family: Arial, sans-serif; }",
+            "    table { border-collapse: collapse; width: 60%; margin: 20px 0; }",
+            "    th, td { border: 1px solid #dddddd; text-align: left; padding: 8px; }",
+            "    th { background-color: #f2f2f2; }",
+            "</style>",
+            "</head><body>",
+            f"<h1>Function Profiling Report: {profiling_data['function_name']}</h1>",
+            "<table>",
+            "<tr><th>Metric</th><th>Value</th></tr>"
+        ]
+        for key, value in profiling_data.items():
+            html_lines.append(f"<tr><td>{key.replace('_', ' ').title()}</td><td>{value}</td></tr>")
+        html_lines.append("</table></body></html>")
         with open(f"{filename}.html", 'w') as f:
-            f.write("<html><head><title>Function Profiling Report</title>")
-            f.write("""
-            <style>
-                body { font-family: Arial, sans-serif; }
-                table { border-collapse: collapse; width: 60%; margin: 20px 0; }
-                th, td { border: 1px solid #dddddd; text-align: left; padding: 8px; }
-                th { background-color: #f2f2f2; }
-            </style>
-            """)
-            f.write("</head><body>")
-            f.write(f"<h1>Function Profiling Report: {profiling_data['function_name']}</h1>")
-            f.write("<table>")
-            f.write("<tr><th>Metric</th><th>Value</th></tr>")
-            for key, value in profiling_data.items():
-                f.write(f"<tr><td>{key.replace('_', ' ').title()}</td><td>{value}</td></tr>")
-            f.write("</table>")
-            f.write("</body></html>")
+            f.write("\n".join(html_lines))
 
     elif export_format == "xml":
         root = ET.Element("FunctionProfile")
@@ -212,6 +226,19 @@ def line_by_line_profile(
     log_filename = f"lbl_profiler_logs_{time.strftime('%Y%m%d')}_{time.strftime('%H%M%S')}.txt"
 
     def decorator(func: Callable) -> Callable:
+        # Pre-fetch metadata
+        func_name = func.__name__
+        target_code = func.__code__
+        try:
+            filepath = inspect.getfile(func)
+        except (TypeError, ValueError):
+            filepath = "unknown"
+        try:
+            source_lines, starting_line = inspect.getsourcelines(func)
+        except (IOError, TypeError):
+            source_lines, starting_line = [], 0
+        docstring = func.__doc__
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             if not enabled:
@@ -220,36 +247,46 @@ def line_by_line_profile(
             line_execution_times: Dict[int, float] = {}
             line_memory_usage: Dict[int, float] = {}
             current_line_start_time: Optional[float] = None
+            last_lineno: Optional[int] = None
             timer = time.perf_counter
             tracemalloc.start()
 
-            # Prepare shared logging if enabled
-            log_file = None
+            # Prepare shared logging buffer if enabled
+            log_buffer = []
             if shared_log:
-                log_file = open(log_filename, 'a')
-                log_file.write(f"Profiling log for {func.__name__}\n")
-                log_file.write(f"Date: {time.strftime('%Y-%m-%d')}\n")
-                log_file.write(f"Time: {time.strftime('%H:%M:%S')}\n\n")
+                now = time.localtime()
+                timestamp = time.strftime('%Y-%m-%d %H:%M:%S', now)
+                log_buffer.append(f"Profiling log for {func_name}\n")
+                log_buffer.append(f"Date: {timestamp[:10]}\n")
+                log_buffer.append(f"Time: {timestamp[11:]}\n\n")
 
             def trace_lines(frame, event, arg):
-                nonlocal current_line_start_time
-                if frame.f_code.co_name == func.__name__:
-                    lineno = frame.f_lineno
+                nonlocal current_line_start_time, last_lineno
+                if frame.f_code is target_code:
                     if event == 'line':
-                        current_memory = tracemalloc.get_traced_memory()[1] / 10**6  # Convert to MB
-                        if current_line_start_time is not None:
+                        now = timer()
+                        lineno = frame.f_lineno
+                        if current_line_start_time is not None and last_lineno is not None:
+                            elapsed_time = now - current_line_start_time
+                            line_execution_times[last_lineno] = line_execution_times.get(last_lineno, 0.0) + elapsed_time
+
+                            current_memory = tracemalloc.get_traced_memory()[1] / 10**6  # Convert to MB
+                            line_memory_usage[last_lineno] = current_memory
+
+                            # Buffer the profiling data
+                            if shared_log:
+                                log_buffer.append(f"Line {last_lineno}: Execution Time: {elapsed_time:.12f}s, Memory Usage: {current_memory:.12f}MB\n")
+
+                        current_line_start_time = now
+                        last_lineno = lineno
+                    elif event == 'return':
+                        if current_line_start_time is not None and last_lineno is not None:
                             elapsed_time = timer() - current_line_start_time
-                            if lineno in line_execution_times:
-                                line_execution_times[lineno] += elapsed_time
-                            else:
-                                line_execution_times[lineno] = elapsed_time
-                            line_memory_usage[lineno] = current_memory
-
-                            # Log the profiling data
-                            if shared_log and log_file:
-                                log_file.write(f"Line {lineno}: Execution Time: {elapsed_time:.12f}s, Memory Usage: {current_memory:.12f}MB\n")
-
-                        current_line_start_time = timer()
+                            line_execution_times[last_lineno] = line_execution_times.get(last_lineno, 0.0) + elapsed_time
+                            current_memory = tracemalloc.get_traced_memory()[1] / 10**6
+                            line_memory_usage[last_lineno] = current_memory
+                            if shared_log:
+                                log_buffer.append(f"Line {last_lineno}: Execution Time: {elapsed_time:.12f}s, Memory Usage: {current_memory:.12f}MB\n")
                 return trace_lines
 
             sys.settrace(trace_lines)
@@ -260,51 +297,38 @@ def line_by_line_profile(
                 tracemalloc.stop()
 
             # Print profiling data
-            if log_level == "info":
-                print(f"\nLine-by-Line Profiling for '{func.__name__}':")
-                source_lines, starting_line = inspect.getsourcelines(func)
+            if log_level in ("info", "debug"):
+                prefix = "[DEBUG] " if log_level == "debug" else ""
+                print(f"\n{prefix}Line-by-Line Profiling for '{func_name}':")
                 for line_no in sorted(line_execution_times.keys()):
                     actual_line = line_no - starting_line + 1
-                    source_line = source_lines[actual_line - 1].strip()
+                    source_line = source_lines[actual_line - 1].strip() if 0 < actual_line <= len(source_lines) else "???"
                     exec_time = line_execution_times[line_no]
                     mem_usage = line_memory_usage.get(line_no, 0)
-                    print(f"Line {line_no} ({source_line}): "
+                    print(f"{prefix}Line {line_no} ({source_line}): "
                           f"Execution Time: {exec_time:.12f}s, "
                           f"Memory Usage: {mem_usage:.12f}MB")
-            elif log_level == "debug":
-                print(f"\n[DEBUG] Line-by-Line Profiling for '{func.__name__}':")
-                source_lines, starting_line = inspect.getsourcelines(func)
-                for line_no in sorted(line_execution_times.keys()):
-                    actual_line = line_no - starting_line + 1
-                    source_line = source_lines[actual_line - 1].strip()
-                    exec_time = line_execution_times[line_no]
-                    mem_usage = line_memory_usage.get(line_no, 0)
-                    print(f"[DEBUG] Line {line_no} ({source_line}): "
-                          f"Execution Time: {exec_time:.12f}s, "
-                          f"Memory Usage: {mem_usage:.12f}MB")
+
+            # Handle shared logging
+            if shared_log:
+                log_buffer.append("\n" + "-" * 40 + "\n\n")
+                with open(log_filename, 'a') as log_file:
+                    log_file.write("".join(log_buffer))
 
             # Collect the profiling data for the report
-            profiling_data = {
-                "function_name": func.__name__,
-                "timestamp": time.strftime('%Y-%m-%d %H:%M:%S'),
-                "arguments": str({'args': args, 'kwargs': kwargs}),
-                "return_value": str(result),
-                "filepath": inspect.getfile(func),
-                "docstring": func.__doc__,
-                "line_execution_times": line_execution_times,
-                "line_memory_usage": line_memory_usage
-            }
-
             if export_format:
-                file = filename or f"{func.__name__}_lblprofile_report"
+                profiling_data = {
+                    "function_name": func_name,
+                    "timestamp": time.strftime('%Y-%m-%d %H:%M:%S'),
+                    "arguments": str({'args': args, 'kwargs': kwargs}),
+                    "return_value": str(result),
+                    "filepath": filepath,
+                    "docstring": docstring,
+                    "line_execution_times": line_execution_times,
+                    "line_memory_usage": line_memory_usage
+                }
+                file = filename or f"{func_name}_lblprofile_report"
                 export_profiling_data(profiling_data, func, export_format, file)
-
-            # Close the log file if shared logging was enabled
-            if shared_log and log_file:
-                log_file.write("\n")  # Add a new line for separation
-                log_file.write("-" * 40 + "\n")  # Separator between calls
-                log_file.write("\n")  # Add a new line for separation
-                log_file.close()
 
             return result
 
@@ -385,45 +409,48 @@ def export_profiling_data(
 
     elif export_format == 'html':
         output_path = f"{filename}.html"
-        file_mode = 'a' if os.path.exists(output_path) else 'w'
-        if file_mode == 'w':
-            html_content = f"""
-            <html>
-            <head>
-                <title>Line-by-Line Profiling Report</title>
-                <style>
-                    body {{ font-family: Arial, sans-serif; }}
-                    table {{ border-collapse: collapse; width: 100%; }}
-                    th, td {{ border: 1px solid #dddddd; text-align: left; padding: 8px; }}
-                    th {{ background-color: #f2f2f2; }}
-                </style>
-            </head>
-            <body>
-                <h2>Line-by-Line Profiling Report for {func.__name__}</h2>
-                <table>
-                    <tr>
-                        <th>Line Number</th>
-                        <th>Source Code</th>
-                        <th>Execution Time (s)</th>
-                        <th>Memory Usage (MB)</th>
-                    </tr>
-            """
-        else:
+        html_lines = []
+        if os.path.exists(output_path):
             with open(output_path, 'r') as f:
-                html_content = f.read().replace("</table></body></html>", "")
+                html_content = f.read()
+            # If it's a valid HTML report, insert before </table>
+            if "</table></body></html>" in html_content:
+                html_parts = html_content.split("</table></body></html>")
+                html_lines.append(html_parts[0])
+            else:
+                html_lines.append(html_content)
+        else:
+            html_lines.append(f"""<html>
+<head>
+    <title>Line-by-Line Profiling Report</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; }}
+        table {{ border-collapse: collapse; width: 100%; }}
+        th, td {{ border: 1px solid #dddddd; text-align: left; padding: 8px; }}
+        th {{ background-color: #f2f2f2; }}
+    </style>
+</head>
+<body>
+    <h2>Line-by-Line Profiling Report for {func.__name__}</h2>
+    <table>
+        <tr>
+            <th>Line Number</th>
+            <th>Source Code</th>
+            <th>Execution Time (s)</th>
+            <th>Memory Usage (MB)</th>
+        </tr>""")
 
         for data in export_data:
-            html_content += f"""
-            <tr>
-                <td>{data['Line Number']}</td>
-                <td>{data['Source Code']}</td>
-                <td>{data['Execution Time (s)']}</td>
-                <td>{data['Memory Usage (MB)']}</td>
-            </tr>
-            """
-        html_content += "</table></body></html>"
+            html_lines.append(f"""        <tr>
+            <td>{data['Line Number']}</td>
+            <td>{data['Source Code']}</td>
+            <td>{data['Execution Time (s)']}</td>
+            <td>{data['Memory Usage (MB)']}</td>
+        </tr>""")
+
+        html_lines.append("    </table>\n</body>\n</html>")
         with open(output_path, 'w') as f:
-            f.write(html_content)
+            f.write("\n".join(html_lines))
         print(f"[PROFILER] HTML report generated at: {output_path}")
 
     elif export_format == 'xml':
