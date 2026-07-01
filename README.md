@@ -7,6 +7,14 @@
 
 An open-source Python library for identifying bottlenecks in code. It includes function profiling, data exports, logging, and line-by-line profiling for more granular control.
 
+## Changelog (v.1.2.0):
+- Significant performance improvements for both function and line-by-line profiling.
+- Cached function metadata at decoration time to reduce overhead during execution.
+- Optimized line-by-line tracing using code object identity comparison.
+- Implemented buffered logging for shared logs to minimize frequent file I/O.
+- Improved trace accuracy by properly capturing the final line's execution time.
+- Refactored export logic for more efficient report generation.
+
 ## Changelog (v.1.1.0):
 - Added support for 2 new export formats: `yaml` and `toml`.
 - Exports now include more information: peak memory usage, timestamp, arguments, return value, filepath, line number, and docstring.
