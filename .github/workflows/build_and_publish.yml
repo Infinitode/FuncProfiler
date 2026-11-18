@@ -65,11 +65,9 @@ jobs:
     name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
-    # PyPI trusted publishing: the "Environment name" configured on PyPI must
-    # match this value (see the Releasing section of the README).
-    environment:
-      name: pypi
-      url: https://pypi.org/p/funcprofiler
+    # No GitHub environment: the PyPI trusted publisher is configured without
+    # an environment name, so the OIDC token must not carry an environment
+    # claim. If you ever set an environment on PyPI, declare it here too.
     permissions:
       # Mandatory for trusted publishing (OIDC); no API token is used.
       id-token: write

@@ -237,13 +237,14 @@ pending publisher* for a brand new project) and fill in:
 | Owner | `Infinitode` |
 | Repository name | `FuncProfiler` |
 | Workflow name | `build_and_publish.yml` |
-| Environment name | `pypi` |
+| Environment name | *(leave blank)* |
 
-`pypi` must match `jobs.publish.environment.name` in
-`.github/workflows/build_and_publish.yml`. If you would rather not use a GitHub
-environment, leave the field blank on PyPI **and** remove the `environment:`
-block from the `publish` job; otherwise the OIDC token carries an environment
-claim that PyPI will reject.
+The publisher is configured without a GitHub environment, so the `publish` job
+does not declare one either. The two must always agree: an environment name on
+PyPI requires a matching `environment:` block in the workflow, and a workflow
+`environment:` block requires a matching name on PyPI — otherwise the OIDC
+token's claim does not match and PyPI rejects the upload. To add deployment
+protection later, create the environment on both sides at the same time.
 
 To cut a release:
 
