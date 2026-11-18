@@ -3,32 +3,83 @@ name: Publish Python 🐍 distributions 📦 to PyPI
 on:
   push:
     tags:
-       - '*'
+      - '*'
+  # Manual runs must be started from a tag; branch runs fail tag validation.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pypi-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build-n-publish:
-    name: Build and publish Python 🐍 distributions 📦 to PyPI
+  build:
+    name: Build distributions
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.12'
-    - name: Install pypa/setuptools
-      run: >-
-        python -m
-        pip install setuptools wheel
-    - name: Extract tag name
-      id: tag
-      run: echo ::set-output name=TAG_NAME::$(echo $GITHUB_REF | cut -d / -f 3)
-    - name: Update version in setup.py
-      run: >-
-        sed -i "s/{{VERSION_PLACEHOLDER}}/${{ steps.tag.outputs.TAG_NAME }}/g" setup.py
-    - name: Build a binary wheel
-      run: >-
-        python setup.py sdist bdist_wheel
-    - name: Publish distribution 📦 to PyPI
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Check out the repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.13'
+
+      - name: Install build tooling
+        run: python -m pip install --upgrade build twine
+
+      - name: Run the test suite
+        run: python -m unittest test -v
+
+      - name: Validate the release tag and stamp the version
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          version="${TAG_NAME#v}"
+          python -c "import sys; from packaging.version import Version; Version(sys.argv[1])" "$version"
+          echo "Releasing funcprofiler ${version}"
+          sed -i "s/{{VERSION_PLACEHOLDER}}/${version}/g" setup.py
+          sed -i "s/^__version__ = .*/__version__ = \"${version}\"/" funcprofiler/__init__.py
+          grep -n "^__version__" funcprofiler/__init__.py
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Check the distribution metadata
+        run: python -m twine check --strict dist/*
+
+      - name: List the distributions
+        run: ls -l dist/
+
+      - name: Upload the distributions
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # No GitHub environment: the PyPI trusted publisher is configured without
+    # an environment name, so the OIDC token must not carry an environment
+    # claim. If you ever set an environment on PyPI, declare it here too.
+    permissions:
+      # Mandatory for trusted publishing (OIDC); no API token is used.
+      id-token: write
+    steps:
+      - name: Download the distributions
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.14.3
+        with:
+          # PEP 740 attestations are generated automatically via OIDC.
+          attestations: true

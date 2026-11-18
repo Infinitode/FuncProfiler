@@ -8,13 +8,16 @@ Thank you for considering contributing to **FuncProfiler**! Contributions, wheth
    Create a fork of this repository to your GitHub account and clone it locally.
 
 2. **Set Up the Environment**  
-   Ensure you have Python 3.6+ installed. You should also install compatible versions of the necessary dependencies for the project.
+   Ensure you have Python 3.8+ installed. FuncProfiler has no third-party runtime dependencies, so you can work directly from a clone.
 
 3. **Run Tests**  
-   Before making changes, run tests to confirm that everything works.
+   Before making changes, run the test suite to confirm that everything works:
 
-> [!TIP]
-> We sometimes include testing scripts in our projects for easy testing.
+   ```bash
+   python -m unittest test -v
+   ```
+
+   Continuous integration runs the same suite on every supported Python version.
 
 ## How to Contribute
 
@@ -32,6 +35,7 @@ Thank you for considering contributing to **FuncProfiler**! Contributions, wheth
    - Push your changes to a feature branch in your fork.
    - Submit a pull request with a detailed explanation of what you've changed or added.
    - Ensure your PR passes all automated tests and adheres to the contribution guidelines.
+   - Add tests for new behaviour in `test.py`.
 
 ## Community Guidelines
 
