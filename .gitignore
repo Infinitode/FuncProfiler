@@ -3,5 +3,21 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Log files
+# Packaging artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+*.whl
+
+# Log files produced by shared_log=True
 *.txt
+
+# Reports produced with the default filenames
+*_funcprofile_report.*
+*_lblprofile_report.*
+
+# Test and tooling caches
+.pytest_cache/
+.coverage
+htmlcov/
