@@ -44,6 +44,7 @@ An open-source Python library for identifying bottlenecks in code. It includes f
 - Exporters no longer print; the decorators report `Report exported to: …` instead.
 - The console line-by-line report is aligned and unit-aware (see examples below).
 - Minimum supported Python is now 3.8; CI tests every supported version.
+- Releases are published with PyPI trusted publishing (OIDC) and PEP 740 attestations — no API token secret — from a build job that is separate from the publishing job.
 
 ### Migrating from 1.2.0
 
@@ -221,6 +222,42 @@ myapp.parse_row     10000  0       1.204 s   120.40 µs 96.10 µs  1.201 ms  0.0
   threads is not attributed to lines.
 - Async generators are not profiled (a `RuntimeWarning` is emitted); wrap the
   body in a regular coroutine instead.
+
+## Releasing
+
+Releases are published to PyPI from GitHub Actions using
+[PyPI trusted publishing](https://docs.pypi.org/trusted-publishers/) (OpenID
+Connect). No API token or password is stored in the repository.
+
+One-time setup — on PyPI, open the project (or *Publishing* → *Add a new
+pending publisher* for a brand new project) and fill in:
+
+| Field | Value |
+|-------|-------|
+| Owner | `Infinitode` |
+| Repository name | `FuncProfiler` |
+| Workflow name | `build_and_publish.yml` |
+| Environment name | `pypi` |
+
+`pypi` must match `jobs.publish.environment.name` in
+`.github/workflows/build_and_publish.yml`. If you would rather not use a GitHub
+environment, leave the field blank on PyPI **and** remove the `environment:`
+block from the `publish` job; otherwise the OIDC token carries an environment
+claim that PyPI will reject.
+
+To cut a release:
+
+```bash
+git tag v1.3.0
+git push origin v1.3.0
+```
+
+A leading `v` is stripped, so the tag `v1.3.0` publishes version `1.3.0`.
+The workflow validates the tag, runs the tests, stamps the version into
+`setup.py` and `funcprofiler/__init__.py`, builds the sdist and wheel, checks
+the metadata with `twine check`, and publishes with OIDC. PEP 740 digital
+attestations are generated automatically. The `PYPI_API_TOKEN` secret is no
+longer used and can be deleted.
 
 ## Contributing
 
